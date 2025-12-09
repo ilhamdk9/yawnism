@@ -217,119 +217,171 @@ function initPageLogic() {
     if (currentPage === "brand-guidelines.html") {
         let activeCategoryId = null; // Menyimpan ID kategori yang sedang diedit
 
-        // --- 1. SETUP MODAL KATEGORI ---
+        // --- 1. SETUP MODAL KATEGORI (GRUP BARU) ---
         const modalCat = $('#modalCategory');
-        $('#btnAddCategory').onclick = () => { 
-            $('#categoryForm').reset(); 
-            modalCat.classList.remove('hidden'); 
-        };
-        $('#categoryCancel').onclick = () => modalCat.classList.add('hidden');
         
-        $('#categoryForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const name = e.target.name.value.trim();
-            if(name) {
-                await addDoc(collection(db, 'brand_guideline_categories'), { name: name, created_at: now() });
-                modalCat.classList.add('hidden');
-            }
-        };
+        // Buka modal
+        if($('#btnAddCategory')) {
+            $('#btnAddCategory').onclick = () => { 
+                $('#categoryForm').reset(); 
+                modalCat.classList.remove('hidden'); 
+            };
+        }
+        
+        // Tutup modal
+        if($('#categoryCancel')) $('#categoryCancel').onclick = () => modalCat.classList.add('hidden');
+        
+        // Simpan Grup Baru ke Firebase
+        if($('#categoryForm')) {
+            $('#categoryForm').onsubmit = async (e) => {
+                e.preventDefault();
+                const name = e.target.name.value.trim();
+                if(name) {
+                    try {
+                        await addDoc(collection(db, 'brand_guideline_categories'), { 
+                            name: name, 
+                            created_at: now() 
+                        });
+                        modalCat.classList.add('hidden');
+                    } catch (err) {
+                        console.error("Gagal simpan grup:", err);
+                        alert("Gagal menyimpan grup.");
+                    }
+                }
+            };
+        }
 
-        // --- 2. SETUP MODAL ITEM (LINK) ---
+        // --- 2. SETUP MODAL ITEM (LINK BARU) ---
         const modalItem = $('#modalBGItem');
-        $('#bgItemCancel').onclick = () => modalItem.classList.add('hidden');
+        if($('#bgItemCancel')) $('#bgItemCancel').onclick = () => modalItem.classList.add('hidden');
 
-        $('#bgItemForm').onsubmit = async (e) => {
-            e.preventDefault();
-            if (!activeCategoryId) return; // Keamanan
+        // Simpan Item Link ke Sub-Collection Firebase
+        if($('#bgItemForm')) {
+            $('#bgItemForm').onsubmit = async (e) => {
+                e.preventDefault();
+                if (!activeCategoryId) return; // Pastikan ada grup yg dipilih
 
-            const fd = new FormData(e.target);
-            // Simpan ke SUB-COLLECTION 'items' di dalam kategori tersebut
-            await addDoc(collection(db, 'brand_guideline_categories', activeCategoryId, 'items'), {
-                name: fd.get('name'),
-                link: fd.get('link'),
-                note: fd.get('note'),
-                created_at: now()
-            });
-            modalItem.classList.add('hidden');
-        };
+                const fd = new FormData(e.target);
+                const itemData = {
+                    name: fd.get('name'),
+                    link: fd.get('link'),
+                    note: fd.get('note'),
+                    created_at: now()
+                };
+
+                try {
+                    // Simpan ke path: brand_guideline_categories -> {grupID} -> items
+                    await addDoc(collection(db, 'brand_guideline_categories', activeCategoryId, 'items'), itemData);
+                    modalItem.classList.add('hidden');
+                } catch (err) {
+                    console.error("Gagal simpan item:", err);
+                    alert("Gagal menyimpan link.");
+                }
+            };
+        }
 
         // --- 3. RENDER DATA (NESTED LISTENER) ---
-        onSnapshot(query(collection(db, 'brand_guideline_categories'), orderBy('created_at', 'desc')), snapshot => {
+        // Dengarkan perubahan data Grup secara realtime
+        const q = query(collection(db, 'brand_guideline_categories'), orderBy('created_at', 'desc'));
+        
+        onSnapshot(q, (snapshot) => {
             const container = $('#bgCategories');
-            container.innerHTML = '';
+            if(!container) return;
+            
+            container.innerHTML = ''; // Reset tampilan
+
+            if(snapshot.empty) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Belum ada grup data. Klik tombol di atas untuk buat baru.</div>';
+                return;
+            }
 
             snapshot.forEach(docSnap => {
                 const catData = docSnap.data();
                 const catId = docSnap.id;
 
-                // Buat Kartu Kategori
+                // Buat Kartu Grup
                 const card = document.createElement('div');
-                card.className = 'card'; // Pakai style card biar rapi
+                card.className = 'card';
                 card.style.marginBottom = '20px';
                 
-                // Header Kartu
+                // Header Kartu (Judul Grup & Tombol Hapus Grup)
                 card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
-                        <h3 style="margin:0; color:var(--primary);">${catData.name}</h3>
-                        <div>
-                            <button class="btn-primary btn-add-item" style="font-size:0.8rem; padding:5px 10px;">+ Link</button>
-                            <button class="btn-danger btn-del-cat" style="font-size:0.8rem; padding:5px 10px;">Hapus Grup</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #fefae0; padding-bottom:15px; margin-bottom:15px;">
+                        <h3 style="margin:0; color:var(--primary); font-size:1.2rem;">📂 ${catData.name}</h3>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-primary btn-add-item" style="font-size:0.8rem; padding:6px 12px;">+ Link</button>
+                            <button class="btn-danger btn-del-cat" style="font-size:0.8rem; padding:6px 12px;">Hapus Grup</button>
                         </div>
                     </div>
-                    <div id="items-${catId}" style="display:flex; flex-direction:column; gap:8px;">
-                        <small>Memuat data...</small>
+                    <div id="items-${catId}" style="display:flex; flex-direction:column; gap:10px;">
+                        <small style="color:#aaa;">Memuat link...</small>
                     </div>
                 `;
                 container.appendChild(card);
 
-                // Event Listener Tombol di dalam kartu
+                // --- Event Listener Tombol di dalam Kartu ---
+                
+                // 1. Tombol Tambah Link
                 card.querySelector('.btn-add-item').onclick = () => {
-                    activeCategoryId = catId; // Set target kategori
+                    activeCategoryId = catId; // Set target grup yg mau diisi
                     $('#bgItemForm').reset();
                     modalItem.classList.remove('hidden');
                 };
+
+                // 2. Tombol Hapus Grup (Hati-hati!)
                 card.querySelector('.btn-del-cat').onclick = async () => {
-                    if(confirm('Hapus grup ini beserta isinya?')) {
+                    if(confirm(`Hapus grup "${catData.name}" beserta semua link di dalamnya?`)) {
+                        // Hapus dokumen grup (sub-collection 'items' harus dihapus manual atau dibiarkan jadi orphan di Firestore)
+                        // Untuk aplikasi sederhana, hapus parent doc sudah cukup menghilangkan akses UI.
                         await deleteDoc(doc(db, 'brand_guideline_categories', catId));
                     }
                 };
 
-                // --- FETCH SUB-ITEMS (REALTIME) ---
-                // Mengambil data item yang ada DI DALAM kategori ini
-                onSnapshot(query(collection(db, 'brand_guideline_categories', catId, 'items'), orderBy('created_at', 'desc')), itemSnap => {
+                // --- FETCH SUB-ITEMS (Isi Link di dalam Grup) ---
+                const itemsQuery = query(collection(db, 'brand_guideline_categories', catId, 'items'), orderBy('created_at', 'desc'));
+                
+                onSnapshot(itemsQuery, (itemSnap) => {
                     const itemContainer = document.getElementById(`items-${catId}`);
-                    itemContainer.innerHTML = '';
+                    if(!itemContainer) return;
+                    
+                    itemContainer.innerHTML = ''; // Bersihkan loading/isi lama
                     
                     if (itemSnap.empty) {
-                        itemContainer.innerHTML = '<small style="color:#999;">Belum ada data link.</small>';
+                        itemContainer.innerHTML = '<small style="color:#ccc; font-style:italic;">Belum ada link tersimpan.</small>';
+                        return;
                     }
 
                     itemSnap.forEach(itemDoc => {
                         const item = itemDoc.data();
+                        const itemId = itemDoc.id;
+                        
                         const itemEl = document.createElement('div');
-                        itemEl.className = 'bg-category'; // Pakai style list yang sudah ada
-                        itemEl.style.padding = '10px';
+                        itemEl.className = 'bg-category'; // Pakai style list kotak putih
+                        itemEl.style.padding = '12px 15px';
+                        
+                        // Tampilan Item Link
                         itemEl.innerHTML = `
                             <div style="flex:1;">
-                                <a href="${item.link}" target="_blank" style="font-weight:bold; color:var(--text-main); text-decoration:none; display:flex; align-items:center; gap:5px;">
+                                <a href="${item.link}" target="_blank" style="font-weight:bold; color:var(--text-main); text-decoration:none; display:flex; align-items:center; gap:8px; font-size:1rem;">
                                     🔗 ${item.name} 
+                                    <span style="font-size:0.7rem; color:#d4a373;">↗</span>
                                 </a>
-                                ${item.note ? `<small style="color:#666; display:block; margin-top:2px;">${item.note}</small>` : ''}
+                                ${item.note ? `<div style="color:#888; font-size:0.85rem; margin-top:4px;">📝 ${item.note}</div>` : ''}
                             </div>
-                            <button class="btn-danger btn-del-item" style="padding:4px 8px; font-size:0.7rem;">X</button>
+                            <button class="btn-danger btn-del-item" style="padding:5px 10px; font-size:0.7rem; margin-left:10px;">X</button>
                         `;
                         itemContainer.appendChild(itemEl);
 
-                        // Hapus Item Spesifik
+                        // Hapus Item Link Spesifik
                         itemEl.querySelector('.btn-del-item').onclick = async () => {
-                            if(confirm('Hapus link ini?')) {
-                                await deleteDoc(doc(db, 'brand_guideline_categories', catId, 'items', itemDoc.id));
+                            if(confirm(`Hapus link "${item.name}"?`)) {
+                                await deleteDoc(doc(db, 'brand_guideline_categories', catId, 'items', itemId));
                             }
                         };
                     });
-                });
-            });
-        });
+                }); // End Snapshot Items
+            }); // End Loop Docs
+        }); // End Snapshot Categories
     }
     if(currentPage === "hpp.html") {
         onSnapshot(collection(db,'products'), s => {
