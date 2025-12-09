@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Keuangan - Yawnism</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#d4a373">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <div class="brand">
+                <h1>🐱 Yawnism</h1><small>Admin</small>
+            </div>
+            <nav>
+                <a href="dashboard.html" class="nav-link">🏠 Dashboard</a>
+                <a href="products.html" class="nav-link">👕 Products</a>
+                <a href="stock.html" class="nav-link">📦 Stok</a>
+                <a href="hpp.html" class="nav-link">💰 HPP</a>
+                <a href="finance.html" class="nav-link active">💸 Keuangan</a>
+                <a href="suppliers.html" class="nav-link">🚚 Supplier</a>
+                <a href="collections.html" class="nav-link">📖 Koleksi</a>
+                <a href="brand-guidelines.html" class="nav-link">🎨 Guideline</a>
+                <a href="orders.html" class="nav-link">🛒 Orders</a>
+                <a href="settings.html" class="nav-link">⚙️ Settings</a>
+                <button id="logoutBtn" class="logout">🐾 Logout</button>
+            </nav>
+            <div class="cat-footer"><img src="https://cataas.com/cat/sleepy"></div>
+        </aside>
+        <main id="main">
+            <header><button id="menuBtn">🐾</button>
+                <div class="header-cat"><span>Hi, <b id="userInfo">...</b></span></div>
+            </header>
+            <section id="content">
+                <div class="header-flex">
+                    <h2>Keuangan</h2>
+                    <div class="btn-group">
+                        <button id="btnAddExpense" class="btn-danger">Pengeluaran 📉</button>
+                        <button id="btnAddIncome" class="btn-success">Pemasukan 📈</button>
+                    </div>
+                </div>
+                <div id="financeList" class="list-container">Loading...</div>
+            </section>
+        </main>
+        <div id="financeModal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <form id="financeForm">
+                    <h3>Transaksi</h3>
+                    <input type="hidden" name="type">
+                    <label>Jumlah (Rp) <input name="amount" type="number" required></label>
+                    <label>Tanggal <input name="date" type="date" required></label>
+                    <label>Catatan <textarea name="note"></textarea></label>
+                    <div class="form-actions"><button type="button" id="financeCancel"
+                            class="btn-secondary">Batal</button><button type="submit"
+                            class="btn-primary">Simpan</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>window.FIREBASE_CONFIG = { apiKey: "AIzaSyAtVIavqXkVlo17jcIoL0cuACelhqHw7KA", authDomain: "yawnism-1fda9.firebaseapp.com", projectId: "yawnism-1fda9", storageBucket: "yawnism-1fda9.firebasestorage.app", messagingSenderId: "162759829520", appId: "1:162759829520:web:f422d0d234ffb7df4d4295" };</script>
+    <script src="app.js" type="module"></script>
+</body>
+
+</html>

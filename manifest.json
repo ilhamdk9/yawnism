@@ -1,12 +1,10 @@
 {
-    "name": "Yawnism Admin",
+    "name": "Yawnism",
     "short_name": "Yawnism",
-    "description": "Lazy Admin Mode for Yawnism",
     "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#fefae0",
     "theme_color": "#d4a373",
-    "orientation": "portrait",
     "icons": [
         {
             "src": "https://cataas.com/cat/cute/says/Yawnism?width=192&height=192",

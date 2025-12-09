@@ -4,12 +4,9 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Yawnism Admin - Cat Edition</title>
-
+    <title>Login - Yawnism Admin</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#d4a373">
-    <link rel="apple-touch-icon" href="https://cataas.com/cat/cute/says/Yawnism?width=192&height=192">
-
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
     <link rel="shortcut icon" href="yawn.jpg" type="image/x-icon">
@@ -20,224 +17,28 @@
         <div class="scary-content">
             <h1>MAAF ANDA BUKAN KAMI</h1>
             <p>Akses ditolak secara permanen.</p>
-            <button onclick="location.reload()">Coba Lagi (Refresh)</button>
+            <button onclick="location.reload()">Coba Lagi</button>
         </div>
     </div>
 
     <div id="login-overlay">
         <div class="login-box">
-            <img src="https://cataas.com/cat/cute/says/Hello" alt="Cute Cat" class="cat-header">
+            <img src="https://cataas.com/cat/cute/says/Hello" class="cat-header">
             <h2>Meow! Login Dulu</h2>
             <p>Khusus Admin Yawnism</p>
             <form id="loginForm">
                 <input type="email" id="loginEmail" placeholder="Email" required>
                 <input type="password" id="loginPass" placeholder="Password" required>
-                <button type="submit" id="btnLogin">Masuk</button>
+                <button type="submit">Masuk</button>
             </form>
-            <p id="loginError" style="color:red; font-size:0.8rem; display:none;">Login Gagal...</p>
-        </div>
-    </div>
-
-    <div id="app" class="hidden">
-        <aside id="sidebar">
-            <div class="brand">
-                <h1>🐱 Yawnism</h1>
-                <small>Lazy Admin Mode</small>
-            </div>
-            <nav>
-                <button data-view="dashboard" class="active">🏠 Dashboard</button>
-                <button data-view="products">👕 Products</button>
-                <button data-view="stock">📦 Stok</button>
-                <button data-view="hpp">💰 HPP</button>
-                <button data-view="finance">💸 Keuangan</button>
-                <button data-view="suppliers">🚚 Supplier</button>
-                <button data-view="collections">📖 Koleksi</button>
-                <button data-view="brand-guidelines">🎨 Guideline</button>
-                <button data-view="orders">🛒 Orders</button>
-                <button data-view="settings">⚙️ Settings</button>
-                <button id="logoutBtn" class="logout">🐾 Logout</button>
-            </nav>
-            <div class="cat-footer">
-                <img src="https://cataas.com/cat/sleepy" alt="Sleepy Cat">
-            </div>
-        </aside>
-
-        <main id="main">
-            <header>
-                <button id="menuBtn">🐾</button>
-
-                <div class="header-cat">
-                    <span>Admin: <b id="userInfo">...</b></span>
-                </div>
-            </header>
-
-            <section id="content">
-                <div id="view-dashboard" class="view">
-                    <h2>Dashboard</h2>
-                    <div id="dashboard-cards" class="grid-cards"></div>
-                </div>
-
-                <div id="view-products" class="view hidden">
-                    <div class="header-flex">
-                        <h2>Daftar Produk</h2>
-                        <button id="btnAddProduct" class="btn-primary">Tambah Produk 🐾</button>
-                    </div>
-                    <div id="productsList" class="list-container"></div>
-                </div>
-
-                <div id="view-stock" class="view hidden">
-                    <h2>Manajemen Stok</h2>
-                    <div class="card p-4 mb-4">
-                        <div class="form-row">
-                            <select id="stockProductSelect"></select>
-                            <input id="stockSize" placeholder="Size (e.g. M)" />
-                            <input id="stockDelta" type="number" placeholder="Jumlah (+/-)" />
-                            <input id="stockNote" placeholder="Catatan" />
-                            <button id="stockApply" class="btn-primary">Update Stok</button>
-                        </div>
-                    </div>
-                    <div id="stockLog" class="list-container"></div>
-                </div>
-
-                <div id="view-hpp" class="view hidden">
-                    <h2>Daftar HPP</h2>
-                    <div id="hppList" class="list-container"></div>
-                </div>
-
-                <div id="view-finance" class="view hidden">
-                    <div class="header-flex">
-                        <h2>Keuangan</h2>
-                        <div class="btn-group">
-                            <button id="btnAddExpense" class="btn-danger">Pengeluaran 📉</button>
-                            <button id="btnAddIncome" class="btn-success">Pemasukan 📈</button>
-                        </div>
-                    </div>
-                    <div id="financeList" class="list-container"></div>
-                </div>
-
-                <div id="view-suppliers" class="view hidden">
-                    <div class="header-flex">
-                        <h2>Supplier</h2>
-                        <button id="btnAddSupplier" class="btn-primary">Tambah Supplier</button>
-                    </div>
-                    <div id="suppliersList" class="list-container"></div>
-                </div>
-
-                <div id="view-collections" class="view hidden">
-                    <div class="header-flex">
-                        <h2>Koleksi / Lookbook</h2>
-                        <button id="btnAddCollection" class="btn-primary">Tambah Koleksi</button>
-                    </div>
-                    <div id="collectionsList" class="list-container"></div>
-                </div>
-
-                <div id="view-brand-guidelines" class="view hidden">
-                    <div class="header-flex">
-                        <h2>Brand Guideline</h2>
-                        <button id="btnAddCategory" class="btn-primary">Tambah Kategori</button>
-                    </div>
-                    <div id="bgCategories" class="list-container"></div>
-                </div>
-
-                <div id="view-orders" class="view hidden">
-                    <h2>Orders</h2>
-                    <div id="ordersList" class="list-container"></div>
-                </div>
-
-                <div id="view-settings" class="view hidden">
-                    <h2>Settings</h2>
-                    <form id="settingsForm" class="card p-4">
-                        <div class="form-group"><label>Brand Name</label><input name="brand_name"></div>
-                        <div class="form-group"><label>Logo Link</label><input name="logo_link"></div>
-                        <div class="form-group"><label>Contact Email</label><input name="contact_email"></div>
-                        <button type="submit" class="btn-primary">Simpan</button>
-                    </form>
-                </div>
-            </section>
-        </main>
-
-        <div id="modalProduct" class="modal-overlay hidden">
-            <div class="modal-content">
-                <form id="productForm">
-                    <h3 id="productFormTitle">Form Produk</h3>
-                    <label>Nama Produk <input name="name" required></label>
-                    <div class="form-row"><label>Kode <input name="code"></label><label>Kategori <input
-                                name="category"></label></div>
-                    <div class="form-row"><label>Harga Jual <input name="price" type="number"></label><label>HPP <input
-                                name="hpp" type="number"></label></div>
-                    <label>Sizes (koma) <input name="sizes"></label>
-                    <label>Colors (koma) <input name="colors"></label>
-                    <label>Photo Link <input name="photo_link"></label>
-                    <label>Deskripsi <textarea name="description"></textarea></label>
-                    <label>Status <select name="status">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select></label>
-                    <div class="form-actions"><button type="button" id="productCancel"
-                            class="btn-secondary">Batal</button><button type="submit"
-                            class="btn-primary">Simpan</button></div>
-                </form>
-            </div>
-        </div>
-        <div id="financeModal" class="modal-overlay hidden">
-            <div class="modal-content">
-                <form id="financeForm">
-                    <h3 id="financeTitle">Transaksi</h3>
-                    <input type="hidden" name="type">
-                    <label>Jumlah <input name="amount" type="number" required></label>
-                    <label>Tanggal <input name="date" type="date" required></label>
-                    <label>Catatan <textarea name="note"></textarea></label>
-                    <div class="form-actions"><button type="button" id="financeCancel"
-                            class="btn-secondary">Batal</button><button type="submit"
-                            class="btn-primary">Simpan</button></div>
-                </form>
-            </div>
-        </div>
-        <div id="modalCategory" class="modal-overlay hidden">
-            <div class="modal-content">
-                <form id="categoryForm">
-                    <h3>Kategori</h3><label>Nama <input name="name" required></label>
-                    <div class="form-actions"><button type="button" id="categoryCancel"
-                            class="btn-secondary">Batal</button><button type="submit"
-                            class="btn-primary">Simpan</button></div>
-                </form>
-            </div>
-        </div>
-        <div id="modalBGItem" class="modal-overlay hidden">
-            <div class="modal-content">
-                <form id="bgItemForm">
-                    <h3>Item</h3><label>Nama <input name="name" required></label><label>Link <input name="link"
-                            required></label><label>Note <textarea name="note"></textarea></label>
-                    <div class="form-actions"><button type="button" id="bgItemCancel"
-                            class="btn-secondary">Batal</button><button type="submit"
-                            class="btn-primary">Simpan</button></div>
-                </form>
-            </div>
+            <p id="loginError" style="color:red; font-size:0.8rem; display:none; margin-top:10px;">Login Gagal...</p>
         </div>
     </div>
 
     <script>
-        window.FIREBASE_CONFIG = {
-            apiKey: "AIzaSyAtVIavqXkVlo17jcIoL0cuACelhqHw7KA",
-            authDomain: "yawnism-1fda9.firebaseapp.com",
-            projectId: "yawnism-1fda9",
-            storageBucket: "yawnism-1fda9.firebasestorage.app",
-            messagingSenderId: "162759829520",
-            appId: "1:162759829520:web:f422d0d234ffb7df4d4295",
-            measurementId: "G-K8CRSK9H1B"
-        };
+        window.FIREBASE_CONFIG = { apiKey: "AIzaSyAtVIavqXkVlo17jcIoL0cuACelhqHw7KA", authDomain: "yawnism-1fda9.firebaseapp.com", projectId: "yawnism-1fda9", storageBucket: "yawnism-1fda9.firebasestorage.app", messagingSenderId: "162759829520", appId: "1:162759829520:web:f422d0d234ffb7df4d4295", measurementId: "G-K8CRSK9H1B" };
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js')); }
     </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker registered!', reg))
-                    .catch(err => console.log('Service Worker failed', err));
-            });
-        }
-    </script>
-
     <script src="app.js" type="module"></script>
 </body>
 
