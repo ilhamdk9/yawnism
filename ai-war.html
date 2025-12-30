@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Clash of Kings: Balanced Auto Battle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Roboto:wght@500&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #050505;
+            font-family: 'Roboto', sans-serif;
+            user-select: none;
+        }
+
+        /* UI LAYER */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* HEADER */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+        }
+
+        .castle-status {
+            text-align: center;
+            color: white;
+            width: 350px;
+        }
+
+        .hp-bar-bg {
+            width: 100%;
+            height: 25px;
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+            position: relative;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            transition: width 0.2s;
+        }
+
+        .hp-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 3px black;
+        }
+
+        #p1-hp {
+            background: linear-gradient(90deg, #0055ff, #00aaff);
+            width: 100%;
+        }
+
+        #p2-hp {
+            background: linear-gradient(90deg, #ff3a3a, #ff7700);
+            width: 100%;
+        }
+
+        .castle-name {
+            font-family: 'Cinzel', serif;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 2px 10px black;
+        }
+
+        /* MANA BAR UI (NEW) */
+        .mana-container {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            margin-top: 5px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .mana-fill {
+            height: 100%;
+            background: #aa00ff;
+            width: 0%;
+            transition: width 0.2s linear;
+        }
+
+        .mana-status {
+            font-size: 12px;
+            color: #d0f;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        /* SPECTATOR MODE INDICATOR */
+        .spectator-label {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffff00;
+            font-family: 'Cinzel', serif;
+            font-size: 16px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px #ffff00;
+            opacity: 0.7;
+        }
+
+        /* OVERLAY MESSAGES */
+        .overlay-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Cinzel', serif;
+            font-size: 80px;
+            color: white;
+            text-shadow: 0 0 30px black;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 50px;
+            border: 2px solid white;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 999;
+            font-family: 'Cinzel', serif;
+            letter-spacing: 3px;
+        }
+    </style>
+
+    <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+    </script>
+</head>
+
+<body>
+
+    <div id="loading">PREPARING BATTLEFIELD...</div>
+
+    <div id="ui-layer">
+        <div class="header">
+            <div class="castle-status">
+                <div class="castle-name" style="color:#00aaff">BLUE AI</div>
+                <div class="hp-bar-bg">
+                    <div id="p1-hp" class="hp-bar-fill"></div>
+                    <div id="p1-hp-text" class="hp-text">3000/3000</div>
+                </div>
+                <div class="mana-container">
+                    <div id="p1-mana-bar" class="mana-fill"></div>
+                </div>
+                <div class="mana-status" id="p1-mana">MANA: 0</div>
+            </div>
+
+            <div class="spectator-label">SLOW TACTICAL MODE</div>
+
+            <div class="castle-status">
+                <div class="castle-name" style="color:#ff3a3a">RED AI</div>
+                <div class="hp-bar-bg">
+                    <div id="p2-hp" class="hp-bar-fill"></div>
+                    <div id="p2-hp-text" class="hp-text">3000/3000</div>
+                </div>
+                <div class="mana-container">
+                    <div id="p2-mana-bar" class="mana-fill"></div>
+                </div>
+                <div class="mana-status" id="p2-mana">MANA: 0</div>
+            </div>
+        </div>
+
+        <div id="msg-win" class="overlay-msg" style="color: #00aaff; border-color:#00aaff;">BLUE WINS</div>
+        <div id="msg-lose" class="overlay-msg" style="color: #ff3a3a; border-color:#ff3a3a;">RED WINS</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- GAME CONFIG ---
+        const CASTLE_HP = 3000;
+        const MANA_MAX = 100;
+
+        // PERUBAHAN 1: Mana Regen diperlambat (Tadinya 0.6)
+        const MANA_REGEN = 0.25;
+
+        const LANES = [-15, -5, 5, 15];
+        const LANE_COLORS = [0x1a1a1a, 0x1f1f1f, 0x1a1a1a, 0x1f1f1f];
+
+        // DATABASE UNIT
+        const UNITS = {
+            SWORD: { cost: 10, hp: 180, dmg: 15, range: 3, speed: 0.18, color: 0x00ccff, type: 'MELEE', cooldown: 40, scale: 1 },
+            TANK: { cost: 30, hp: 600, dmg: 8, range: 3, speed: 0.10, color: 0x888888, type: 'MELEE', cooldown: 50, scale: 1.6 },
+            WITCH: { cost: 40, hp: 120, dmg: 45, range: 18, speed: 0.14, color: 0xaa00ff, type: 'RANGED', cooldown: 70, scale: 1.1 },
+            HEALER: { cost: 25, hp: 140, dmg: -10, range: 10, speed: 0.14, color: 0x00ff88, type: 'SUPPORT', cooldown: 50, scale: 1 }
+        };
+        const UNIT_KEYS = Object.keys(UNITS);
+
+        let scene, camera, renderer;
+        let castleP1, castleP2;
+        let units = [], particles = [], projectiles = [];
+        let blueMana = 20, redMana = 20;
+        let gameOver = false;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.FogExp2(0x050505, 0.015);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+            camera.position.set(0, 45, 50);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            const amb = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(amb);
+            const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+            dir.position.set(20, 60, 20);
+            dir.castShadow = true;
+            dir.shadow.mapSize.set(2048, 2048);
+            dir.shadow.camera.left = -50; dir.shadow.camera.right = 50;
+            dir.shadow.camera.top = 50; dir.shadow.camera.bottom = -50;
+            scene.add(dir);
+
+            createEnvironment();
+            castleP1 = createCastle(-45, 0x00aaff);
+            castleP2 = createCastle(45, 0xff3a3a);
+
+            document.getElementById('loading').style.display = 'none';
+            animate();
+        }
+
+        function createEnvironment() {
+            LANES.forEach((zPos, index) => {
+                const geo = new THREE.PlaneGeometry(200, 10);
+                const mat = new THREE.MeshStandardMaterial({ color: LANE_COLORS[index], roughness: 0.9 });
+                const lane = new THREE.Mesh(geo, mat);
+                lane.rotation.x = -Math.PI / 2;
+                lane.position.z = zPos;
+                lane.receiveShadow = true;
+                scene.add(lane);
+
+                if (index < LANES.length - 1) {
+                    const lineGeo = new THREE.PlaneGeometry(200, 0.5);
+                    const lineMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+                    const line = new THREE.Mesh(lineGeo, lineMat);
+                    line.rotation.x = -Math.PI / 2;
+                    line.position.z = zPos + 5;
+                    line.position.y = 0.05;
+                    scene.add(line);
+                }
+            });
+        }
+
+        function createCastle(x, color) {
+            const group = new THREE.Group();
+            const wallGeo = new THREE.BoxGeometry(8, 15, 45);
+            const wallMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2 });
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.y = 7.5;
+            wall.castShadow = true;
+            group.add(wall);
+
+            LANES.forEach(z => {
+                const tGeo = new THREE.CylinderGeometry(2, 3, 10, 8);
+                const tower = new THREE.Mesh(tGeo, wallMat);
+                tower.position.set(x > 0 ? -4 : 4, 5, z);
+                group.add(tower);
+            });
+
+            group.position.set(x, 0, 0);
+            scene.add(group);
+            return { mesh: group, hp: CASTLE_HP, maxHp: CASTLE_HP, team: x < 0 ? 1 : 2, pos: new THREE.Vector3(x, 0, 0) };
+        }
+
+        class Unit {
+            constructor(type, team, laneIndex) {
+                const stats = UNITS[type];
+                this.type = type;
+                this.team = team;
+                this.laneIndex = laneIndex;
+                this.laneZ = LANES[laneIndex];
+
+                this.hp = stats.hp;
+                this.maxHp = stats.hp;
+                this.dmg = stats.dmg;
+                this.range = stats.range;
+                this.speed = stats.speed;
+                this.cooldown = 0;
+                this.maxCooldown = stats.cooldown;
+                this.unitType = stats.type;
+
+                this.mesh = new THREE.Group();
+
+                let geoObj;
+                let matColor = team === 1 ? stats.color : 0xff3a3a;
+                if (type === 'TANK') geoObj = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.5, 2.2), new THREE.MeshStandardMaterial({ color: matColor }));
+                else if (type === 'WITCH') geoObj = new THREE.Mesh(new THREE.ConeGeometry(0.8, 3, 8), new THREE.MeshStandardMaterial({ color: matColor }));
+                else if (type === 'HEALER') geoObj = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2, 8), new THREE.MeshStandardMaterial({ color: matColor }));
+                else geoObj = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), new THREE.MeshStandardMaterial({ color: matColor }));
+
+                geoObj.position.y = 1.2 * stats.scale;
+                geoObj.castShadow = true;
+                this.mesh.add(geoObj);
+
+                if (type === 'SWORD') {
+                    const w = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.8, 0.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+                    w.position.set(0.6, 1.5, 0.5); w.rotation.x = Math.PI / 2;
+                    geoObj.add(w);
+                }
+
+                this.mesh.scale.setScalar(stats.scale);
+
+                const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+                hpBg.position.y = 3.5;
+                this.hpBar = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.2), new THREE.MeshBasicMaterial({ color: team === 1 ? 0x00aaff : 0xff3a3a }));
+                this.hpBar.position.z = 0.01;
+                hpBg.add(this.hpBar);
+                this.mesh.add(hpBg);
+
+                const startX = team === 1 ? -38 : 38;
+                this.mesh.position.set(startX, 0, this.laneZ + (Math.random() - 0.5) * 2);
+                this.mesh.lookAt(team === 1 ? 40 : -40, 0, this.laneZ);
+
+                scene.add(this.mesh);
+                createParticle(this.mesh.position, 0xffffff);
+            }
+
+            update() {
+                if (this.hp <= 0) return;
+                const hpPct = Math.max(0, this.hp / this.maxHp);
+                this.hpBar.scale.x = hpPct;
+                this.hpBar.position.x = -(1 - hpPct) * 0.95;
+
+                if (this.cooldown > 0) this.cooldown--;
+
+                let target = null;
+                let minDist = 999;
+                let potentialTargets = [];
+
+                if (this.unitType === 'SUPPORT') {
+                    potentialTargets = units.filter(u => u.team === this.team && u.laneIndex === this.laneIndex && u !== this && u.hp < u.maxHp);
+                } else {
+                    potentialTargets = units.filter(u => u.team !== this.team && u.laneIndex === this.laneIndex);
+                    const enemyCastle = this.team === 1 ? castleP2 : castleP1;
+                    const castleDistX = Math.abs(this.mesh.position.x - enemyCastle.pos.x);
+                    if (castleDistX < 45) {
+                        potentialTargets.push({
+                            isCastle: true,
+                            pos: new THREE.Vector3(enemyCastle.pos.x, 0, this.laneZ),
+                            mesh: enemyCastle.mesh
+                        });
+                    }
+                }
+
+                potentialTargets.forEach(t => {
+                    const d = this.mesh.position.distanceTo(t.isCastle ? t.pos : t.mesh.position);
+                    if (d < minDist) { minDist = d; target = t; }
+                });
+
+                if (target) {
+                    if (minDist <= this.range) {
+                        if (this.cooldown <= 0) {
+                            this.performAction(target);
+                            this.cooldown = this.maxCooldown;
+                        }
+                    } else {
+                        if (this.unitType === 'SUPPORT' && target.isCastle) { }
+                        else {
+                            const dest = target.isCastle ? target.pos : target.mesh.position;
+                            const dir = new THREE.Vector3().subVectors(dest, this.mesh.position).normalize();
+                            dir.z = 0;
+                            this.mesh.position.add(dir.multiplyScalar(this.speed));
+                        }
+                    }
+                } else {
+                    const forward = this.team === 1 ? 1 : -1;
+                    this.mesh.position.x += this.speed * forward;
+                    const zDiff = this.laneZ - this.mesh.position.z;
+                    this.mesh.position.z += zDiff * 0.05;
+                }
+            }
+
+            performAction(target) {
+                if (this.unitType === 'RANGED') {
+                    createProjectile(this.mesh.position, target.isCastle ? target.pos : target.mesh.position, this.dmg);
+                } else if (this.unitType === 'SUPPORT') {
+                    target.hp = Math.min(target.maxHp, target.hp - this.dmg);
+                    createParticle(target.mesh.position, 0x00ff00);
+                } else {
+                    target.hp -= this.dmg;
+                    const bump = this.team === 1 ? 0.5 : -0.5;
+                    this.mesh.position.x += bump;
+                }
+
+                if (target.isCastle) {
+                    if (this.team === 1) castleP2.hp -= this.dmg;
+                    else castleP1.hp -= this.dmg;
+                    createParticle(target.pos, 0xffaa00);
+                }
+            }
+        }
+
+        function createProjectile(start, end, dmg) {
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({ color: 0xff00ff }));
+            mesh.position.copy(start).y += 2;
+            scene.add(mesh);
+            projectiles.push({ mesh, targetPos: end.clone().add(new THREE.Vector3(0, 1.5, 0)), speed: 0.6, dmg });
+        }
+
+        function createParticle(pos, color) {
+            const geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const mat = new THREE.MeshBasicMaterial({ color });
+            const p = new THREE.Mesh(geo, mat);
+            p.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5), 1.5, (Math.random() - 0.5)));
+            scene.add(p);
+            particles.push({ mesh: p, life: 1.0, vel: new THREE.Vector3(0, 0.1, 0) });
+        }
+
+        // --- LOGIKA AI (DIPERBAIKI) ---
+        function updateAI() {
+            if (gameOver) return;
+
+            // Regen Mana Lebih Lambat
+            blueMana = Math.min(MANA_MAX, blueMana + MANA_REGEN);
+            redMana = Math.min(MANA_MAX, redMana + MANA_REGEN);
+
+            document.getElementById('p1-mana').innerText = `MANA: ${Math.floor(blueMana)}`;
+            document.getElementById('p1-mana-bar').style.width = `${blueMana}%`;
+            document.getElementById('p2-mana').innerText = `MANA: ${Math.floor(redMana)}`;
+            document.getElementById('p2-mana-bar').style.width = `${redMana}%`;
+
+            // STRATEGI SPAWN BARU (Lebih Jarang)
+            // AI Hanya akan mencoba spawn jika mana > 40 (supaya tidak spawn kroco terus)
+            // Atau spawn darurat jika musuh dekat castle (tidak diimplementasi detail biar simple)
+
+            // BLUE AI
+            if (blueMana > 40 && Math.random() < 0.015) { // Chance 1.5% per frame
+                spawnRandomUnit(1, blueMana);
+            }
+
+            // RED AI
+            if (redMana > 40 && Math.random() < 0.015) {
+                spawnRandomUnit(2, redMana);
+            }
+        }
+
+        function spawnRandomUnit(team, currentMana) {
+            const type = UNIT_KEYS[Math.floor(Math.random() * UNIT_KEYS.length)];
+            const cost = UNITS[type].cost;
+            const laneIdx = Math.floor(Math.random() * 4);
+
+            if (currentMana >= cost) {
+                if (team === 1) blueMana -= cost;
+                else redMana -= cost;
+                units.push(new Unit(type, team, laneIdx));
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (gameOver) return;
+
+            updateAI();
+
+            document.getElementById('p1-hp').style.width = `${(Math.max(0, castleP1.hp) / CASTLE_HP) * 100}%`;
+            document.getElementById('p1-hp-text').innerText = Math.floor(Math.max(0, castleP1.hp));
+            document.getElementById('p2-hp').style.width = `${(Math.max(0, castleP2.hp) / CASTLE_HP) * 100}%`;
+            document.getElementById('p2-hp-text').innerText = Math.floor(Math.max(0, castleP2.hp));
+
+            for (let i = units.length - 1; i >= 0; i--) {
+                const u = units[i];
+                u.update();
+                if (u.hp <= 0) {
+                    createParticle(u.mesh.position, 0x555555);
+                    scene.remove(u.mesh);
+                    units.splice(i, 1);
+                }
+            }
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                const dir = new THREE.Vector3().subVectors(p.targetPos, p.mesh.position);
+                if (dir.length() < 0.5) {
+                    createParticle(p.mesh.position, 0xaa00ff);
+                    scene.remove(p.mesh);
+                    projectiles.splice(i, 1);
+                } else {
+                    p.mesh.position.add(dir.normalize().multiplyScalar(p.speed));
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= 0.05;
+                p.mesh.position.add(p.vel);
+                p.mesh.scale.setScalar(p.life);
+                if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
+            }
+
+            if (castleP1.hp <= 0 || castleP2.hp <= 0) {
+                gameOver = true;
+                document.getElementById(castleP1.hp <= 0 ? 'msg-lose' : 'msg-win').style.display = 'block';
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

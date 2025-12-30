@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explained AI Chess</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Roboto Mono', monospace;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            gap: 30px;
+        }
+
+        /* LEFT SIDE: BOARD */
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #chessboard {
+            width: 520px;
+            height: 520px;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            border: 12px solid #2c2c2c;
+            border-radius: 4px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .square {
+            width: 65px;
+            height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+            cursor: default;
+            user-select: none;
+            position: relative;
+        }
+
+        .white {
+            background-color: #e8ebef;
+            color: black;
+        }
+
+        .black {
+            background-color: #7d8796;
+            color: black;
+        }
+
+        .highlight {
+            background-color: #bacb46 !important;
+        }
+
+        /* Highlight warna hijau stabilo */
+        .check-danger {
+            background-color: #ff5252 !important;
+        }
+
+        /* Raja kena skak */
+
+        .piece.w {
+            color: #fff;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+        }
+
+        .piece.b {
+            color: #000;
+            filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.3));
+        }
+
+        /* RIGHT SIDE: UI */
+        .panel {
+            width: 350px;
+            height: 540px;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #333;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+            text-align: center;
+            color: #4caf50;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+
+        /* EXPLANATION BOX */
+        .explanation-box {
+            background: #252525;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 0 4px 4px 0;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .exp-title {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .exp-text {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .move-log {
+            flex: 1;
+            background: #111;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 13px;
+            border: 1px solid #333;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .log-turn {
+            color: #888;
+        }
+
+        .log-move {
+            color: #ddd;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        button:disabled {
+            background: #222;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #4caf50;
+            color: #000;
+            grid-column: span 2;
+        }
+
+        .btn-start:hover {
+            background: #43a047;
+        }
+
+        .btn-stop {
+            background: #f44336;
+        }
+
+        .status-bar {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="board-container">
+        <div id="chessboard"></div>
+    </div>
+
+    <div class="panel">
+        <h1>AI CHESS ANALYST</h1>
+
+        <div class="status-bar" id="status">Menunggu Permainan...</div>
+
+        <div class="explanation-box">
+            <div class="exp-title">ALASAN LANGKAH (AI REASONING)</div>
+            <div class="exp-text" id="aiReason">Belum ada langkah.</div>
+        </div>
+
+        <div class="move-log" id="moveLog"></div>
+
+        <div class="controls">
+            <button class="btn-start" id="startBtn" onclick="startGame()">▶ MULAI PERTANDINGAN</button>
+            <button class="btn-stop" id="stopBtn" onclick="stopGame()" disabled>⏹ STOP</button>
+            <button onclick="resetGame()">🔄 RESET</button>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI AI ---
+        const SEARCH_DEPTH = 3;
+        const MOVE_DELAY = 800; // Delay agar manusia sempat baca penjelasannya
+
+        // --- VARIABEL GLOBAL ---
+        var game = new Chess();
+        var isRunning = false;
+
+        // NAMA BIDAK (Indonesian)
+        const PIECE_NAMES = {
+            'p': 'Pion', 'n': 'Kuda', 'b': 'Gajah', 'r': 'Benteng', 'q': 'Ratu', 'k': 'Raja'
+        };
+
+        const PIECE_SYMBOLS = {
+            'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+            'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
+        };
+
+        // --- EVALUATION TABLES (PST) ---
+        // (Data yang sama seperti sebelumnya untuk logika posisi)
+        const pst_w = {
+            p: [[100, 100, 100, 100, 105, 100, 100, 100], [78, 83, 86, 73, 102, 82, 85, 90], [7, 29, 21, 44, 40, 31, 44, 7], [-17, 16, -2, 15, 14, 0, 15, -13], [-26, 3, 10, 9, 6, 1, 0, -23], [-22, 9, 5, -11, -10, -2, 3, -19], [-31, 8, -7, -37, -36, -14, 3, -31], [0, 0, 0, 0, 0, 0, 0, 0]],
+            n: [[-66, -53, -75, -75, -10, -55, -58, -70], [-3, -6, 100, -36, 4, 62, -4, -14], [10, 67, 1, 74, 73, 27, 62, -2], [24, 24, 45, 37, 33, 41, 25, 17], [-1, 5, 31, 21, 22, 35, 2, 0], [-18, 10, 13, 22, 18, 15, 11, -14], [-23, -15, 2, 0, 2, 0, -23, -20], [-74, -23, -26, -24, -19, -35, -22, -69]],
+            b: [[-59, -78, -82, -76, -23, -107, -37, -50], [-11, 20, 35, -42, -39, 31, 2, -22], [-9, 39, -32, 41, 52, -10, 28, -14], [25, 17, 20, 34, 26, 25, 15, 10], [13, 10, 17, 23, 17, 16, 0, 7], [14, 25, 24, 15, 8, 25, 20, 15], [19, 20, 11, 6, 7, 6, 20, 16], [-7, 2, -15, -12, -14, -15, -10, -10]],
+            r: [[35, 29, 33, 4, 37, 33, 56, 50], [55, 29, 56, 67, 55, 62, 34, 60], [19, 35, 28, 33, 45, 27, 25, 15], [0, 5, 16, 13, 18, -4, -9, -6], [-28, -35, -16, -21, -13, -29, -46, -30], [-42, -28, -42, -25, -25, -35, -26, -46], [-53, -38, -31, -26, -29, -43, -44, -53], [-30, -24, -18, 5, -2, -18, -31, -32]],
+            q: [[6, 1, -8, -104, 69, 24, 88, 26], [14, 32, 60, -10, 20, 76, 57, 24], [-2, 43, 32, 60, 72, 63, 43, 2], [1, -16, 22, 17, 25, 20, -13, -6], [-14, -15, -2, -5, -1, -10, -20, -22], [-30, -6, -13, -11, -16, -11, -16, -27], [-36, -18, 0, -19, -15, -15, -21, -38], [-39, -30, -31, -13, -31, -36, -34, -42]],
+            k: [[4, 54, 47, -99, -99, 60, 83, -62], [-32, 10, 55, 56, 56, 55, 10, 3], [-62, 12, -57, 44, -67, 28, 37, -31], [-55, 29, 11, -27, -19, -21, 12, -35], [-55, 17, 13, -43, -56, -28, 55, -47], [-11, 43, 5, -22, -39, -27, 25, -65], [-4, 3, -14, -50, -57, -18, 13, 4], [17, 30, -3, -14, 6, -1, 40, 18]]
+        };
+        var pst_b = { p: [], n: [], b: [], r: [], q: [], k: [] };
+        for (var piece in pst_w) pst_b[piece] = pst_w[piece].slice().reverse();
+        const weights = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 20000 };
+
+        // --- VISUAL BOARD ---
+        function drawBoard() {
+            const boardEl = document.getElementById('chessboard');
+            boardEl.innerHTML = '';
+            const boardState = game.board();
+            const history = game.history({ verbose: true });
+            const lastMove = history.length > 0 ? history[history.length - 1] : null;
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const square = document.createElement('div');
+                    const isWhite = (i + j) % 2 === 0;
+                    square.className = `square ${isWhite ? 'white' : 'black'}`;
+                    const squareName = String.fromCharCode(97 + j) + (8 - i);
+
+                    // Highlight Last Move
+                    if (lastMove && (lastMove.from === squareName || lastMove.to === squareName)) {
+                        square.classList.add('highlight');
+                    }
+
+                    const piece = boardState[i][j];
+                    if (piece) {
+                        const span = document.createElement('span');
+                        span.className = `piece ${piece.color}`;
+                        span.innerText = PIECE_SYMBOLS[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+
+                        // Highlight King in Check
+                        if (piece.type === 'k' && game.in_check() && game.turn() === piece.color) {
+                            square.classList.add('check-danger');
+                        }
+                        square.appendChild(span);
+                    }
+                    boardEl.appendChild(square);
+                }
+            }
+        }
+
+        // --- AI LOGIC (MINIMAX) ---
+        function evaluateBoard(board) {
+            let totalEvaluation = 0;
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const piece = board[i][j];
+                    if (piece) {
+                        let value = weights[piece.type];
+                        let pstVal = (piece.color === 'w') ? pst_w[piece.type][i][j] : pst_b[piece.type][i][j];
+                        value += pstVal;
+                        totalEvaluation += (piece.color === 'w' ? value : -value);
+                    }
+                }
+            }
+            return totalEvaluation;
+        }
+
+        function minimax(game, depth, alpha, beta, isMaximizingPlayer) {
+            if (depth === 0 || game.game_over()) return -evaluateBoard(game.board());
+            const newGameMoves = game.moves();
+            if (isMaximizingPlayer) {
+                let bestMove = -99999;
+                for (let i = 0; i < newGameMoves.length; i++) {
+                    game.move(newGameMoves[i]);
+                    bestMove = Math.max(bestMove, minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer));
+                    game.undo();
+                    alpha = Math.max(alpha, bestMove);
+                    if (beta <= alpha) return bestMove;
+                }
+                return bestMove;
+            } else {
+                let bestMove = 99999;
+                for (let i = 0; i < newGameMoves.length; i++) {
+                    game.move(newGameMoves[i]);
+                    bestMove = Math.min(bestMove, minimax(game, depth - 1, alpha, beta, !isMaximizingPlayer));
+                    game.undo();
+                    beta = Math.min(beta, bestMove);
+                    if (beta <= alpha) return bestMove;
+                }
+                return bestMove;
+            }
+        }
+
+        function getBestMove() {
+            const moves = game.moves();
+            if (moves.length === 0) return null;
+            let bestMove = null;
+            let bestValue = -99999;
+
+            // Acak sedikit agar permainan variatif
+            moves.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < moves.length; i++) {
+                game.move(moves[i]);
+                let boardValue = -minimax(game, SEARCH_DEPTH - 1, -100000, 100000, false);
+                game.undo();
+                if (boardValue > bestValue) {
+                    bestValue = boardValue;
+                    bestMove = moves[i];
+                }
+            }
+            return bestMove;
+        }
+
+        // --- GENERATE EXPLANATION (LOGIKA BAHASA) ---
+        function generateReasoning(moveSan, moveObj) {
+            // moveObj contains: color, from, to, piece, captured, flags, etc.
+            const turn = moveObj.color === 'w' ? "Putih" : "Hitam";
+            const piece = PIECE_NAMES[moveObj.piece];
+            let reason = "";
+
+            // 1. CEK SKAKMAT
+            if (game.in_checkmate()) {
+                return `🔥 <b>SKAKMAT!</b> ${turn} mengakhiri permainan dengan langkah mematikan menggunakan ${piece}.`;
+            }
+
+            // 2. CEK SKAK
+            if (game.in_check()) {
+                return `⚔️ <b>SERANGAN (CHECK)!</b> ${turn} menggerakkan ${piece} ke ${moveObj.to} untuk memaksa Raja lawan bergerak.`;
+            }
+
+            // 3. ROKADE (Castling)
+            if (moveSan.includes("O-O")) {
+                return `🛡️ <b>ROKADE!</b> ${turn} mengamankan Raja ke pojok dan mengaktifkan Benteng ke tengah permainan.`;
+            }
+
+            // 4. MAKAN (Capture)
+            if (moveObj.captured) {
+                const capturedPiece = PIECE_NAMES[moveObj.captured];
+                const valueDiff = weights[moveObj.captured] - weights[moveObj.piece];
+
+                if (valueDiff > 0) {
+                    return `🍽️ <b>KEUNTUNGAN BESAR!</b> ${piece} memakan ${capturedPiece}. Menukar bidak murah dengan bidak mahal.`;
+                } else {
+                    return `⚔️ <b>PERTUKARAN/MAKAN:</b> ${piece} mengambil ${capturedPiece} di ${moveObj.to} untuk mengurangi materi lawan.`;
+                }
+            }
+
+            // 5. PROMOSI
+            if (moveObj.flags.includes('p')) {
+                return `👑 <b>PROMOSI!</b> Pion ${turn} mencapai ujung dan berubah menjadi Ratu. Kekuatan tempur meningkat drastis.`;
+            }
+
+            // 6. POSITIONAL LOGIC (Berdasarkan jenis bidak)
+            if (moveObj.piece === 'p') {
+                if (['d4', 'e4', 'd5', 'e5'].includes(moveObj.to)) {
+                    return `🧠 <b>PENGUASAAN TENGAH:</b> Pion maju ke ${moveObj.to} untuk mengontrol petak pusat yang krusial.`;
+                }
+                return `♟️ <b>STRUKTUR PION:</b> Mendorong pion ke ${moveObj.to} untuk membuka jalur atau membatasi gerak lawan.`;
+            }
+
+            if (moveObj.piece === 'n') {
+                return `🐴 <b>MANUVER KUDA:</b> Melompat ke ${moveObj.to}. Kuda sangat kuat di posisi tengah/terkunci.`;
+            }
+
+            if (moveObj.piece === 'b') {
+                return `♝ <b>DIAGONAL:</b> Gajah pindah ke ${moveObj.to} untuk menguasai diagonal panjang.`;
+            }
+
+            if (moveObj.piece === 'k') {
+                return `🛡️ <b>POSISI RAJA:</b> Menggeser Raja ke ${moveObj.to} agar tidak terkena ancaman taktis.`;
+            }
+
+            return `📍 <b>POSISI:</b> ${turn} memindahkan ${piece} ke ${moveObj.to} berdasarkan kalkulasi posisi terbaik.`;
+        }
+
+        // --- GAME LOOP ---
+        function makeAIMove() {
+            if (!isRunning || game.game_over()) return;
+
+            // Tampilkan status "Berpikir"
+            document.getElementById('status').innerText = `${game.turn() === 'w' ? 'Putih' : 'Hitam'} sedang berpikir...`;
+            document.getElementById('status').style.color = '#ffeb3b';
+
+            setTimeout(() => {
+                const moveSan = getBestMove(); // Dapatkan langkah (SAN format string, e.g. "Nf3")
+                if (!moveSan) return;
+
+                // Eksekusi langkah
+                const moveResult = game.move(moveSan); // moveResult adalah objek detail
+
+                // Generate Penjelasan
+                const explanation = generateReasoning(moveSan, moveResult);
+
+                // Update UI
+                drawBoard();
+                updateLog(moveSan);
+                updateExplanation(explanation);
+
+                // Cek Kondisi Game
+                if (game.game_over()) {
+                    handleGameOver();
+                } else {
+                    // Lanjut turn berikutnya
+                    if (isRunning) setTimeout(makeAIMove, MOVE_DELAY);
+                }
+
+            }, 100); // Sedikit delay agar UI tidak freeze sebelum mikir
+        }
+
+        function updateExplanation(text) {
+            const box = document.getElementById('aiReason');
+            // Efek ketik sederhana atau langsung ganti
+            box.innerHTML = text;
+            // Ubah warna border kiri berdasarkan giliran
+            const color = game.turn() === 'b' ? '#e8ebef' : '#7d8796'; // Warna lawan karena turn sudah ganti
+            document.querySelector('.explanation-box').style.borderLeftColor = color;
+        }
+
+        function updateLog(move) {
+            const log = document.getElementById('moveLog');
+            const history = game.history();
+            const moveNum = Math.ceil(history.length / 2);
+
+            // Jika Putih (Ganjil di array, tapi turn 'b' sekarang)
+            if (game.turn() === 'b') {
+                const div = document.createElement('div');
+                div.className = 'log-entry';
+                div.innerHTML = `<span class="log-turn">${moveNum}.</span> <span class="log-move" style="color:#4caf50">${move}</span>`;
+                log.prepend(div);
+            } else {
+                // Update baris terakhir untuk langkah Hitam
+                if (log.firstChild) {
+                    log.firstChild.innerHTML += ` <span class="log-move" style="color:#ff5252">${move}</span>`;
+                }
+            }
+        }
+
+        function handleGameOver() {
+            isRunning = false;
+            let msg = "";
+            if (game.in_checkmate()) msg = "SKAKMAT! Permainan Berakhir.";
+            else if (game.in_draw()) msg = "REMIS (Seri).";
+            else if (game.in_stalemate()) msg = "PAT (Stalemate).";
+
+            document.getElementById('status').innerText = msg;
+            document.getElementById('status').style.color = '#fff';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // --- CONTROLS ---
+        function startGame() {
+            if (game.game_over()) resetGame();
+            isRunning = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            makeAIMove();
+        }
+
+        function stopGame() {
+            isRunning = false;
+            document.getElementById('status').innerText = "Permainan Dijeda (Paused)";
+            document.getElementById('status').style.color = '#ff9800';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        function resetGame() {
+            stopGame();
+            game.reset();
+            drawBoard();
+            document.getElementById('moveLog').innerHTML = '';
+            document.getElementById('aiReason').innerText = "Siap memulai analisis baru.";
+            document.getElementById('status').innerText = "Siap.";
+            document.getElementById('status').style.color = '#aaa';
+        }
+
+        // Init
+        drawBoard();
+
+    </script>
+</body>
+
+</html>

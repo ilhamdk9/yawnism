@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Football - Passing & Jumping Update</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #050810;
+            font-family: 'Orbitron', sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* SCOREBOARD */
+        .scoreboard {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, rgba(0, 10, 20, 0.95), rgba(0, 0, 0, 0.6));
+            padding: 10px 50px 25px 50px;
+            border-radius: 0 0 30px 30px;
+            border-bottom: 2px solid #00c6ff;
+            border-left: 1px solid rgba(0, 198, 255, 0.3);
+            border-right: 1px solid rgba(0, 198, 255, 0.3);
+            display: flex;
+            gap: 50px;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 198, 255, 0.15);
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+        }
+
+        .score-num {
+            font-size: 50px;
+            font-weight: 900;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .timer {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-top: 10px;
+            letter-spacing: 2px;
+        }
+
+        /* CONTROLS */
+        .controls {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        button {
+            background: rgba(0, 20, 40, 0.9);
+            border: 1px solid #00c6ff;
+            color: #00c6ff;
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(0, 198, 255, 0.2);
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #00c6ff;
+            color: black;
+            box-shadow: 0 0 25px #00c6ff;
+        }
+
+        /* BADGES & POPUPS */
+        .role-badge {
+            position: absolute;
+            font-size: 10px;
+            font-weight: 900;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            pointer-events: none;
+            white-space: nowrap;
+            transform: translate(-50%, -160%);
+            box-shadow: 0 2px 4px black;
+        }
+
+        .action-text {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ffff00;
+            text-shadow: 0 0 5px black;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+        }
+
+        @keyframes floatUp {
+            0% {
+                transform: translate(-50%, -100%) scale(0.5);
+                opacity: 0;
+            }
+
+            50% {
+                transform: translate(-50%, -200%) scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -300%) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* GOAL OVERLAY */
+        .goal-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0) skew(-10deg);
+            font-size: 90px;
+            font-weight: 900;
+            font-style: italic;
+            color: #fff;
+            -webkit-text-stroke: 3px black;
+            text-shadow: 0 0 40px currentColor;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 99;
+        }
+
+        .goal-active {
+            transform: translate(-50%, -50%) scale(1) skew(-10deg);
+            opacity: 1;
+        }
+    </style>
+
+    <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+</head>
+
+<body>
+
+    <div id="goal-text" class="goal-overlay">GOAL!</div>
+
+    <div id="ui-layer">
+        <div class="scoreboard">
+            <div class="team-score">
+                <div class="score-num" id="score-red" style="color: #ff3a76;">0</div>
+            </div>
+            <div class="timer" id="game-timer">00:00</div>
+            <div class="team-score">
+                <div class="score-num" id="score-blue" style="color: #00ffea;">0</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="resetBall()">Reset Ball</button>
+            <button onclick="toggleCamera()">Camera</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // CONFIG
+        const FIELD_W = 60;
+        const FIELD_H = 40;
+        const BALL_RADIUS = 1.2;
+        const BOT_RADIUS = 1.8;
+        const BOT_SPEED = 0.4;
+        const KICK_POWER = 1.8;
+        const PASS_POWER = 1.2; // Kekuatan operan
+        const DRIBBLE_FORCE = 0.5;
+
+        // Colors
+        const C_FIELD = 0x111822; const C_LINES = 0x00aaff;
+        const C_RED = 0xff3a76; const C_BLUE = 0x00ffea; const C_BALL = 0xffffff;
+
+        let scene, camera, renderer, controls;
+        let ball, bots = [], particles = [];
+        let isGoalAnim = false;
+        let score = { red: 0, blue: 0 };
+        let gameTime = 0;
+        let camMode = 0;
+        let netTexture;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050810);
+            scene.fog = new THREE.FogExp2(0x050810, 0.01);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 50, 65);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+            sun.position.set(20, 50, 20); sun.castShadow = true;
+            sun.shadow.mapSize.set(2048, 2048);
+            sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
+            sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -50;
+            scene.add(sun);
+
+            createSpotlight(-30, 40, -25, 0x00aaff, 10);
+            createSpotlight(30, 40, 25, 0xff3a76, 10);
+            createSpotlight(-30, 40, 25, 0xffffff, 5);
+            createSpotlight(30, 40, -25, 0xffffff, 5);
+
+            netTexture = createNetTexture();
+            createField();
+            createGoal(-FIELD_W / 2, C_RED);
+            createGoal(FIELD_W / 2, C_BLUE);
+            createBall();
+
+            // Teams (Red Left, Blue Right)
+            createBot('RED', C_RED, -28, 0, 'GK');
+            createBot('RED', C_RED, -12, 0, 'DEF');
+            createBot('RED', C_RED, -2, 0, 'FWD');
+
+            createBot('BLUE', C_BLUE, 28, 0, 'GK');
+            createBot('BLUE', C_BLUE, 12, 0, 'DEF');
+            createBot('BLUE', C_BLUE, 2, 0, 'FWD');
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2.1;
+            controls.minDistance = 30; controls.maxDistance = 100;
+
+            animate();
+            setInterval(updateTimer, 1000);
+        }
+
+        function createSpotlight(x, y, z, color, intensity) {
+            const spot = new THREE.SpotLight(color, intensity);
+            spot.position.set(x, y, z); spot.angle = Math.PI / 6; spot.penumbra = 0.5; spot.decay = 2; spot.distance = 100;
+            spot.target.position.set(0, 0, 0); scene.add(spot); scene.add(spot.target);
+        }
+
+        function createNetTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#00000000'; ctx.fillRect(0, 0, 64, 64);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, 64, 64); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(64, 64); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(64, 0); ctx.lineTo(0, 64); ctx.stroke();
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 4);
+            return tex;
+        }
+
+        function createField() {
+            const field = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_W, FIELD_H), new THREE.MeshStandardMaterial({ color: C_FIELD, roughness: 0.5, metalness: 0.1 }));
+            field.rotation.x = -Math.PI / 2; field.receiveShadow = true; scene.add(field);
+            const lineMat = new THREE.MeshBasicMaterial({ color: C_LINES, transparent: true, opacity: 0.6 });
+            scene.add(new THREE.Mesh(new THREE.PlaneGeometry(0.5, FIELD_H), lineMat).rotation.x = -Math.PI / 2);
+            scene.add(new THREE.Mesh(new THREE.RingGeometry(5.8, 6.2, 64), lineMat).rotation.x = -Math.PI / 2);
+
+            // Walls
+            const v = new THREE.PlaneGeometry(0.5, FIELD_H); const h = new THREE.PlaneGeometry(FIELD_W, 0.5);
+            const l = new THREE.Mesh(v, lineMat); l.rotation.x = -Math.PI / 2; l.position.x = -FIELD_W / 2; scene.add(l);
+            const r = new THREE.Mesh(v, lineMat); r.rotation.x = -Math.PI / 2; r.position.x = FIELD_W / 2; scene.add(r);
+            const t = new THREE.Mesh(h, lineMat); t.rotation.x = -Math.PI / 2; t.position.z = -FIELD_H / 2; scene.add(t);
+            const b = new THREE.Mesh(h, lineMat); b.rotation.x = -Math.PI / 2; b.position.z = FIELD_H / 2; scene.add(b);
+        }
+
+        function createGoal(xPos, color) {
+            const group = new THREE.Group();
+            const glowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: color, emissiveIntensity: 3.0, roughness: 0.1 });
+            const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 6), glowMat); p1.position.set(0, 3, 6.5);
+            const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 6), glowMat); p2.position.set(0, 3, -6.5);
+            const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14), glowMat); bar.rotation.x = Math.PI / 2; bar.position.set(0, 6, 0);
+
+            const netMat = new THREE.MeshBasicMaterial({ map: netTexture, color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.4, alphaTest: 0.1 });
+            const back = new THREE.Mesh(new THREE.PlaneGeometry(13, 6), netMat); back.position.set(xPos > 0 ? 3 : -3, 3, 0); back.rotation.y = xPos > 0 ? -Math.PI / 2 : Math.PI / 2;
+            const s1 = new THREE.Mesh(new THREE.PlaneGeometry(3, 6), netMat); s1.position.set(xPos > 0 ? 1.5 : -1.5, 3, 6.5);
+            const s2 = new THREE.Mesh(new THREE.PlaneGeometry(3, 6), netMat); s2.position.set(xPos > 0 ? 1.5 : -1.5, 3, -6.5);
+            group.add(p1, p2, bar, back, s1, s2); group.position.x = xPos; scene.add(group);
+        }
+
+        function createBall() {
+            ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_RADIUS, 32, 32), new THREE.MeshStandardMaterial({ color: C_BALL, emissive: 0x444444, roughness: 0.2 }));
+            ball.castShadow = true; ball.position.y = BALL_RADIUS;
+            ball.userData = { velocity: new THREE.Vector3(), radius: BALL_RADIUS };
+            scene.add(ball);
+        }
+
+        function createBot(team, color, x, z, role) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(1, 2, 4, 8), new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.4 }));
+            body.position.y = 2; body.castShadow = true;
+            const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.5, 32), new THREE.MeshBasicMaterial({ color: role === 'GK' ? 0xffff00 : 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+            ring.rotation.x = -Math.PI / 2; ring.position.y = 0.1;
+            const visor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.8), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+            visor.position.set(0, 2.5, 0.8);
+
+            group.add(body, ring, visor); group.position.set(x, 0, z);
+
+            const label = document.createElement('div'); label.className = 'role-badge'; label.textContent = role;
+            label.style.color = role === 'GK' ? '#ffff00' : '#ffffff';
+            document.getElementById('ui-layer').appendChild(label);
+
+            group.userData = {
+                team, role, label,
+                startPos: new THREE.Vector3(x, 0, z),
+                radius: BOT_RADIUS,
+                velocity: new THREE.Vector3(), // Movement Vel
+                verticalVel: 0, // Jumping Vel
+                kickCooldown: 0,
+                targetGoalX: team === 'RED' ? FIELD_W / 2 : -FIELD_W / 2
+            };
+            bots.push(group); scene.add(group);
+        }
+
+        function showPopup(text, pos) {
+            const el = document.createElement('div'); el.className = 'action-text'; el.innerText = text;
+            const v = pos.clone().project(camera);
+            el.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+            el.style.top = `${(-(v.y * 0.5) + 0.5) * window.innerHeight}px`;
+            document.getElementById('ui-layer').appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function createExplosion(pos, color) {
+            for (let i = 0; i < 30; i++) {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), new THREE.MeshBasicMaterial({ color }));
+                mesh.position.copy(pos);
+                mesh.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 2 + 1, (Math.random() - 0.5) * 2), life: 1 };
+                scene.add(mesh); particles.push(mesh);
+            }
+        }
+
+        // --- NEW LOGIC: JUMPING & PASSING ---
+
+        function updateBotAI(bot) {
+            const d = bot.userData;
+            if (d.kickCooldown > 0) d.kickCooldown--;
+
+            // 1. POSITIONING & MOVEMENT
+            let target = new THREE.Vector3();
+            const goalX = d.team === 'RED' ? -28 : 28; // Own Goal Line
+
+            if (d.role === 'GK') {
+                // GK Logic: Stay on goal line, clamp Z to ball
+                target.set(goalX, 0, THREE.MathUtils.clamp(ball.position.z, -6, 6));
+
+                // JUMP LOGIC (Hanya Kiper)
+                const distToBall = bot.position.distanceTo(ball.position);
+                const ballHeight = ball.position.y;
+
+                // Jika bola dekat dan tinggi (> 2.5), lompat!
+                if (distToBall < 6 && ballHeight > 2.5 && bot.position.y <= 0.1) {
+                    d.verticalVel = 0.6; // Kekuatan lompat
+                    showPopup("SAVE!", bot.position);
+                }
+
+            } else if (d.role === 'DEF') {
+                const defLine = d.team === 'RED' ? -15 : 15;
+                const threat = (d.team === 'RED' && ball.position.x < 0) || (d.team === 'BLUE' && ball.position.x > 0);
+                target = threat ? ball.position.clone() : new THREE.Vector3(defLine, 0, ball.position.z * 0.4);
+                if (threat) target.x = THREE.MathUtils.clamp(target.x, defLine - 10, defLine + 10);
+            } else {
+                target.copy(ball.position);
+            }
+
+            // Apply Movement
+            const dir = new THREE.Vector3().subVectors(target, bot.position);
+            dir.y = 0;
+            if (dir.length() > 0.5) {
+                dir.normalize().multiplyScalar(BOT_SPEED);
+                bot.position.add(dir);
+            }
+
+            // Apply Jump Physics (Gravity)
+            if (d.role === 'GK') {
+                bot.position.y += d.verticalVel;
+                if (bot.position.y > 0) d.verticalVel -= 0.03; // Gravitasi
+                if (bot.position.y < 0) { bot.position.y = 0; d.verticalVel = 0; } // Tanah
+            } else {
+                bot.position.y = 0; // Pemain lain nempel tanah
+            }
+
+            bot.lookAt(ball.position.x, 0, ball.position.z);
+
+            // 2. BALL INTERACTION (PASS vs SHOOT)
+            const distToBall = bot.position.distanceTo(ball.position);
+
+            // Cek jika bola bisa ditendang (dan tidak sedang cooldown)
+            // Tambahan: Kiper bisa menepis bola di udara (distToBall juga cek Y)
+            const realDist = bot.position.distanceTo(ball.position); // Include Y
+
+            if (realDist < 3 && d.kickCooldown <= 0) {
+
+                // PASSING LOGIC (Untuk DEF dan FWD)
+                let didPass = false;
+                if (d.role !== 'GK') {
+                    // Cari teman di depan
+                    let bestMate = null;
+                    let bestDist = 0;
+
+                    bots.forEach(mate => {
+                        if (mate !== bot && mate.userData.team === d.team) {
+                            // Cek apakah teman ada di depan kita (menuju gawang lawan)
+                            const forwardDir = d.team === 'RED' ? 1 : -1; // Red nyerang ke kanan (+), Blue ke kiri (-)
+                            const isAhead = (mate.position.x - bot.position.x) * forwardDir > 2;
+
+                            // Cek jarak ideal (tidak terlalu dekat, tidak terlalu jauh)
+                            const dist = bot.position.distanceTo(mate.position);
+                            if (isAhead && dist > 5 && dist < 25) {
+                                bestMate = mate;
+                            }
+                        }
+                    });
+
+                    // 30% Chance to Pass if teammate found (biar ga selalu passing)
+                    if (bestMate && Math.random() < 0.4) {
+                        const passDir = new THREE.Vector3().subVectors(bestMate.position, ball.position).normalize();
+                        ball.userData.velocity.add(passDir.multiplyScalar(PASS_POWER));
+                        ball.userData.velocity.y = 0.2; // Low pass
+                        d.kickCooldown = 40;
+                        didPass = true;
+                        showPopup("PASS", bot.position);
+                    }
+                }
+
+                // SHOOT / CLEARANCE LOGIC (Jika tidak passing)
+                if (!didPass) {
+                    const toGoal = new THREE.Vector3(d.targetGoalX, 0, (Math.random() - 0.5) * 6);
+                    const kickDir = new THREE.Vector3().subVectors(toGoal, ball.position).normalize();
+                    ball.userData.velocity.add(kickDir.multiplyScalar(KICK_POWER));
+
+                    // Kiper tendang lambung jauh, pemain biasa shoot
+                    if (d.role === 'GK') ball.userData.velocity.y = 0.6;
+                    else ball.userData.velocity.y = 0.3 + Math.random() * 0.3;
+
+                    d.kickCooldown = 50;
+                    if (d.role === 'GK') showPopup("CLEAR!", bot.position);
+                }
+            }
+
+            // UI Label
+            const labelPos = bot.position.clone().add(new THREE.Vector3(0, 3.5, 0)); labelPos.project(camera);
+            d.label.style.left = `${(labelPos.x * 0.5 + 0.5) * window.innerWidth}px`;
+            d.label.style.top = `${(-labelPos.y * 0.5 + 0.5) * window.innerHeight}px`;
+            d.label.style.display = labelPos.z < 1 ? 'block' : 'none';
+        }
+
+        function updatePhysics() {
+            if (isGoalAnim) return;
+
+            const v = ball.userData.velocity; ball.position.add(v); v.multiplyScalar(0.97); v.y -= 0.04;
+            if (ball.position.y <= BALL_RADIUS) { ball.position.y = BALL_RADIUS; v.y *= -0.5; v.multiplyScalar(0.9); }
+
+            if (ball.position.z > (FIELD_H / 2 - BALL_RADIUS)) { ball.position.z = FIELD_H / 2 - BALL_RADIUS; v.z *= -0.8; }
+            if (ball.position.z < -(FIELD_H / 2 - BALL_RADIUS)) { ball.position.z = -(FIELD_H / 2 - BALL_RADIUS); v.z *= -0.8; }
+
+            const inGoalZ = Math.abs(ball.position.z) < 7;
+            if (ball.position.x > (FIELD_W / 2 - BALL_RADIUS)) { if (inGoalZ) handleGoal('RED'); else { ball.position.x = FIELD_W / 2 - BALL_RADIUS; v.x *= -0.8; } }
+            if (ball.position.x < -(FIELD_W / 2 - BALL_RADIUS)) { if (inGoalZ) handleGoal('BLUE'); else { ball.position.x = -(FIELD_W / 2 - BALL_RADIUS); v.x *= -0.8; } }
+
+            resolveCollisions();
+            bots.forEach(updateBotAI);
+            ball.rotation.x -= v.z * 0.1; ball.rotation.z += v.x * 0.1;
+        }
+
+        function resolveCollisions() {
+            // Bot-Bot
+            for (let i = 0; i < bots.length; i++) {
+                for (let j = i + 1; j < bots.length; j++) {
+                    const a = bots[i], b = bots[j];
+                    const dist = a.position.distanceTo(b.position);
+                    const minDist = a.userData.radius + b.userData.radius;
+                    if (dist < minDist && dist > 0) {
+                        const normal = new THREE.Vector3().subVectors(b.position, a.position).normalize();
+                        normal.y = 0; const overlap = minDist - dist;
+                        a.position.sub(normal.clone().multiplyScalar(overlap * 0.5));
+                        b.position.add(normal.multiplyScalar(overlap * 0.5));
+                    }
+                }
+            }
+            // Bot-Ball
+            bots.forEach(bot => {
+                const dist = bot.position.distanceTo(ball.position);
+                const minDist = bot.userData.radius + ball.userData.radius;
+                if (dist < minDist) {
+                    const dir = new THREE.Vector3().subVectors(ball.position, bot.position).normalize();
+                    dir.y = 0; ball.userData.velocity.add(dir.multiplyScalar(DRIBBLE_FORCE));
+                    const overlap = minDist - dist; ball.position.add(dir.multiplyScalar(overlap));
+                }
+            });
+        }
+
+        function handleGoal(team) {
+            if (isGoalAnim) return; isGoalAnim = true;
+            score[team.toLowerCase()]++; document.getElementById(`score-${team.toLowerCase()}`).innerText = score[team.toLowerCase()];
+            const txt = document.getElementById('goal-text'); txt.textContent = `${team} GOAL!`;
+            txt.style.color = team === 'RED' ? '#ff3a76' : '#00ffea'; txt.classList.add('goal-active');
+            createExplosion(ball.position, team === 'RED' ? C_RED : C_BLUE);
+            setTimeout(() => { txt.classList.remove('goal-active'); resetPositions(); isGoalAnim = false; }, 3000);
+        }
+
+        function resetPositions() {
+            ball.position.set(0, 10, 0); ball.userData.velocity.set(0, 0, 0);
+            bots.forEach(b => { b.position.copy(b.userData.startPos); b.lookAt(0, 0, 0); b.userData.verticalVel = 0; });
+        }
+
+        function updateTimer() {
+            gameTime++; document.getElementById('game-timer').textContent = `${String(Math.floor(gameTime / 60)).padStart(2, '0')}:${String(gameTime % 60).padStart(2, '0')}`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate); updatePhysics();
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i]; p.position.add(p.userData.vel); p.userData.vel.y -= 0.05; p.userData.life -= 0.02; p.scale.setScalar(p.userData.life);
+                if (p.userData.life <= 0) { scene.remove(p); particles.splice(i, 1); }
+            }
+            controls.update(); renderer.render(scene, camera);
+        }
+
+        window.resetBall = () => { ball.position.set(0, 10, 0); ball.userData.velocity.set(0, 0, 0); };
+        window.toggleCamera = () => {
+            camMode = 1 - camMode;
+            if (camMode) { controls.enabled = false; camera.position.set(0, 80, 0); camera.lookAt(0, 0, 0); }
+            else { controls.enabled = true; camera.position.set(0, 50, 60); }
+        };
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+        init();
+    </script>
+</body>
+
+</html>
