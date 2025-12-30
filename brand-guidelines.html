@@ -40,7 +40,7 @@
             </header>
             <section id="content">
                 <div class="header-flex">
-                    <h2>Custom Data / Guideline</h2>
+                    <h2>Yawnism Guideline</h2>
                     <button id="btnAddCategory" class="btn-primary">+ Buat Grup Baru</button>
                 </div>
                 <div id="bgCategories" class="list-container">Loading...</div>
@@ -50,12 +50,12 @@
         <div id="modalCategory" class="modal-overlay hidden">
             <div class="modal-content">
                 <form id="categoryForm">
-                    <h3>Buat Grup Data</h3>
-                    <label>Nama Grup (Misal: Creative Reference)<input name="name" required
-                            placeholder="Contoh: Moodboard 2025"></label>
+                    <h3 style="margin-bottom:20px; color:var(--primary)">📁 Grup Guideline</h3>
+                    <label>Nama Grup</label>
+                    <input name="name" required placeholder="Contoh: Moodboard 2025">
                     <div class="form-actions">
                         <button type="button" id="categoryCancel" class="btn-secondary">Batal</button>
-                        <button type="submit" class="btn-primary">Simpan</button>
+                        <button type="submit" class="btn-primary">Simpan Grup</button>
                     </div>
                 </form>
             </div>
@@ -64,13 +64,16 @@
         <div id="modalBGItem" class="modal-overlay hidden">
             <div class="modal-content">
                 <form id="bgItemForm">
-                    <h3>Tambah Data Link</h3>
-                    <label>Judul Link <input name="name" required placeholder="Contoh: Pinterest Board"></label>
-                    <label>URL / Link <input name="link" required placeholder="https://..."></label>
-                    <label>Catatan (Opsional) <textarea name="note"></textarea></label>
+                    <h3 style="margin-bottom:20px; color:var(--primary)">🔗 Data Link</h3>
+                    <label>Judul Link</label>
+                    <input name="name" required placeholder="Contoh: Pinterest Board">
+                    <label>URL / Link</label>
+                    <input name="link" type="url" required placeholder="https://...">
+                    <label>Catatan Singkat</label>
+                    <textarea name="note" rows="3" placeholder="Tambahkan keterangan..."></textarea>
                     <div class="form-actions">
                         <button type="button" id="bgItemCancel" class="btn-secondary">Batal</button>
-                        <button type="submit" class="btn-primary">Simpan</button>
+                        <button type="submit" class="btn-primary">Simpan Link</button>
                     </div>
                 </form>
             </div>
